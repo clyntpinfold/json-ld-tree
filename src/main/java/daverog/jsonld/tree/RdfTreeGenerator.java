@@ -40,10 +40,9 @@ public class RdfTreeGenerator {
     public RdfTree generateRdfTree(Model model, List<String> prioritisedNamespaces, Map<String, String> nameOverrides) throws RdfTreeException {
         NameResolver nameResolver = new NameResolver(model, prioritisedNamespaces, nameOverrides, rdfResultOntologyPrefix);
         TreeType treeType = TreeType.UNKNOWN;
-        HashMap<RDFNode, Integer> mapFromChildToDepth = new HashMap<RDFNode, Integer>();
 
         if (model.isEmpty())
-            return new RdfTree(model, nameResolver, null, mapFromChildToDepth);
+            return new RdfTree(model, nameResolver, null);
 
         List<Statement> results = getSomeStatements(model, new SimpleSelector(
                 model.getResource(rdfResultOntologyPrefix + "this"),
@@ -102,7 +101,7 @@ public class RdfTreeGenerator {
             }
         }
         if (treeType == TreeType.ITEM) {
-            return buildRdfTree(model, new RdfTree(model, nameResolver, firstResult.getObject(), mapFromChildToDepth));
+            return buildRdfTree(model, new RdfTree(model, nameResolver, firstResult.getObject()));
         } else if (treeType == TreeType.LIST) {
             return buildRdfList(model, nameResolver, generateListItemsUsingResultNext(model, firstResult.getObject().asResource()));
         } else if (treeType == TreeType.LIST_WITH_ORDER_BY_PREDICATE) {
@@ -207,8 +206,8 @@ public class RdfTreeGenerator {
     }
 
     private RdfTree buildRdfList(Model model, NameResolver nameResolver, List<Resource> listItems) throws RdfTreeException {
-        RdfTree list = new RdfTree(model, nameResolver, new HashMap<RDFNode, Integer>());
 
+        RdfTree list = new RdfTree(model, nameResolver);
 
         for (Resource listItem : listItems) {
             list.addListItem(listItem);

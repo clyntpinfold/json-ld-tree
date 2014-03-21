@@ -278,39 +278,6 @@ public class RdfTreeGeneratorTest {
 	}
 	
 	@Test
-	public void depthOfRootIsZero() throws RdfTreeException {
-		Model model = ModelUtils.createJenaModel(
-			"@prefix result: <http://purl.org/ontology/rdf-result/> ." +
-			"result:this result:item <uri:a> . \n" +
-			"<uri:a> <uri:b> \"Val1\" .");
-		assertEquals(0, 
-			generator.generateRdfTree(model).getDepthOf("uri:a"));
-	}
-	
-	@Test
-	public void depthOfChildIsOne() throws RdfTreeException {
-		Model model = ModelUtils.createJenaModel(
-			"@prefix result: <http://purl.org/ontology/rdf-result/> ." +
-			"result:this result:item <uri:a> . \n" +
-			"<uri:a> <uri:b> \"Val1\" ." +
-			"<uri:a> <uri:b> <uri:c> .");
-		assertEquals(1, 
-			generator.generateRdfTree(model).getDepthOf("uri:c"));
-	}
-	
-	@Test
-	public void depthOfGrandchildChildIsTwo() throws RdfTreeException {
-		Model model = ModelUtils.createJenaModel(
-			"@prefix result: <http://purl.org/ontology/rdf-result/> ." +
-			"result:this result:item <uri:a> . \n" +
-			"<uri:a> <uri:b> \"Val1\" ." +
-			"<uri:a> <uri:b> <uri:c> ." +
-			"<uri:c> <uri:b> <uri:d> .");
-		assertEquals(2, 
-			generator.generateRdfTree(model).getDepthOf("uri:d"));
-	}
-	
-	@Test
 	public void listsAreShownAsJsonArrays() throws RdfTreeException {
 		Model model = ModelUtils.createJenaModel(
 			"@prefix result: <http://purl.org/ontology/rdf-result/> ." +

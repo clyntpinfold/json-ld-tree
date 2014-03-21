@@ -1,15 +1,10 @@
 package daverog.jsonld.tree;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-
 import com.google.common.collect.Lists;
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.Property;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.Statement;
+import com.hp.hpl.jena.rdf.model.*;
+
+import java.util.Collections;
+import java.util.List;
 
 
 public class RdfTree implements Comparable<RdfTree> {
@@ -29,35 +24,31 @@ public class RdfTree implements Comparable<RdfTree> {
 	private final Model model;
 	private final NameResolver nameResolver;
 	private Resource type;
-	HashMap<RDFNode, Integer> mapFromChildToDepth = null;
 	private boolean constructed = false;
 
-	public RdfTree(Model model, NameResolver nameResolver, RdfTree parent, RDFNode node, Property predicate, boolean inverse, HashMap<RDFNode, Integer> mapFromChildToDepth) {
+	public RdfTree(Model model, NameResolver nameResolver, RdfTree parent, RDFNode node, Property predicate, boolean inverse) {
 		this.model = model;
 		this.nameResolver = nameResolver;
 		this.parent = parent;
 		this.node = node;
 		this.predicate = predicate;
 		this.inverse = inverse;
-		this.mapFromChildToDepth = mapFromChildToDepth;
 		list = false;
 	}
 
-	public RdfTree(Model model, NameResolver nameResolver, RDFNode rootNode, HashMap<RDFNode, Integer> mapFromChildToDepth) {
+	public RdfTree(Model model, NameResolver nameResolver, RDFNode rootNode) {
 		this.model = model;
 		this.nameResolver = nameResolver;
 		this.node = rootNode;
-		this.mapFromChildToDepth = mapFromChildToDepth;
 		list = false;
 		predicate = null;
 		inverse = false;
 		parent = null;
 	}
 
-	public RdfTree(Model model, NameResolver nameResolver, HashMap<RDFNode, Integer> mapFromChildToDepth) {
+	public RdfTree(Model model, NameResolver nameResolver) {
 		this.model = model;
 		this.nameResolver = nameResolver;
-		this.mapFromChildToDepth = mapFromChildToDepth;
 		list = true;
 		predicate = null;
 		inverse = false;
@@ -93,26 +84,15 @@ public class RdfTree implements Comparable<RdfTree> {
 		//        closer to the root (but not necessarily a parent)
 		//This prevents 'reference data' from forming join-points in RDF lists
 		if (inverse && parent != null && getPredicate() != null) {
-			int depthOfPotentialChild = getDepth() + 1;
-			boolean hasSiblingOrAncestorSibling = depthOfPotentialChild >= getDepthInTree(node);
-			if (hasSiblingOrAncestorSibling) return;
+			return;
 		}
 
-		RdfTree rdfTree = new RdfTree(model, nameResolver, this, childNode, statement.getPredicate(), inverse, mapFromChildToDepth);
-		addChildNode(rdfTree);
-	}
-
-	private void addChildNode(RdfTree child) {
-		children.add(child);
-		int existingDepth = getDepthInTree(node);
-		int depth = getDepth();
-		if (existingDepth == -1 || existingDepth < depth) {
-				mapFromChildToDepth.put(child.getNode(), depth); // not +1 because we measure root node as 0 depth.
-		}
+		RdfTree rdfTree = new RdfTree(model, nameResolver, this, childNode, statement.getPredicate(), inverse);
+		children.add(rdfTree);
 	}
 
 	public void addListItem(Resource listItem) {
-		children.add(new RdfTree(model, nameResolver, this, listItem, null, false, mapFromChildToDepth));
+		children.add(new RdfTree(model, nameResolver, this, listItem, null, false));
 	}
 
 	public Property getPredicate() {
@@ -122,7 +102,6 @@ public class RdfTree implements Comparable<RdfTree> {
 	public RDFNode getNode() {
 		return node;
 	}
-
 
 	public List<RdfTree> getChildren() {
 		return children;
@@ -147,22 +126,6 @@ public class RdfTree implements Comparable<RdfTree> {
 		if (parent == null) return false;
 		if (parent.isList()) return parent.hasListItemWithNode(node);
 		return parent.hasListRootWithNode(node);
-	}
-
-	private int getDepthInTree(RDFNode node) {
-		return getRoot().getDepthOfNode(node);
-	}
-
-	private int getDepthOfNode(RDFNode nodeArg) {
-		if (node != null && node.equals(nodeArg)) return 0;
-		Integer depth = mapFromChildToDepth.get(nodeArg);
-		if (depth == null) return -1;
-		return depth;
-	}
-
-	private RdfTree getRoot() {
-		if (parent == null) return this;
-		return parent.getRoot();
 	}
 
 	/**
@@ -265,26 +228,6 @@ public class RdfTree implements Comparable<RdfTree> {
 
 	public boolean isEmpty() {
 		return children.isEmpty() && node == null;
-	}
-
-	/**
-	 * Get the 'depth' of the resource,
-	 * indicated by the URI, in this tree.
-	 *
-	 * 0 = The root node matches this URI
-	 * 1 = One of the tree's immediate child nodes
-	 *     matches the URI
-	 * 2 = Grandchildren
-	 *
-	 * etc..
-	 *
-	 * This is a relative depth, rather
-	 * than an absolute depth, where it makes
-	 * no difference whether this tree is the root
-	 * or not.
-	 */
-	public int getDepthOf(String uri) {
-		return getDepthOfNode(model.createResource(uri));
 	}
 
 	/**
