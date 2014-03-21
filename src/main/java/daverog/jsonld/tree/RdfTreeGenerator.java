@@ -103,7 +103,7 @@ public class RdfTreeGenerator {
         if (treeType == TreeType.ITEM) {
             return buildRdfTree(model, new RdfTree(model, nameResolver, firstResult.getObject()));
         } else if (treeType == TreeType.LIST) {
-            return buildRdfList(model, nameResolver, generateListItemsUsingResultNext(model, firstResult.getObject().asResource()));
+            return buildRdfList(model, nameResolver);
         } else if (treeType == TreeType.LIST_WITH_ORDER_BY_PREDICATE) {
             listItems = sortListAccordingToOrderingPredicate(listItems, orderingPredicate, sortAscending, model);
             return buildRdfList(model, nameResolver, listItems);
@@ -205,10 +205,122 @@ public class RdfTreeGenerator {
         return root;
     }
 
+    public void buildTree(Model model, RdfTree root, NameResolver nameResolver, List<Resource> listitems) {
+
+        // Keep track of the nodes we have seen
+        ArrayList<Resource> seen = new ArrayList<Resource>();
+
+        // Queue of nodes to process; this makes this a breadth-first traversal.
+        ArrayDeque queue = new ArrayDeque<RdfTree>();
+        queue.push(root);
+
+        // As long as there are still potential parents to process, keep going.
+        while (!queue.isEmpty()) {
+
+            // Parent node is head of queue
+            RdfTree node = (RdfTree)queue.pop();
+
+            // Find immediate children
+            List<Statement> subjects = model.listStatements(new SimpleSelector(node.getNode().asResource(), null, (RDFNode) null)).toList();
+            List<Statement> objects = model.listStatements(new SimpleSelector(null, null, node.getNode())).toList();
+            List<Statement> children = Lists.newArrayList(subjects); children.addAll(objects);
+            for (Statement child : children) {
+
+                System.out.println("--> " + child + " " + child.hashCode());
+
+                RDFNode potential = child.getObject();
+                if (potential.isResource()) {
+
+                    // Is this an inverse node? i.e. one that points AT the parent.
+                    boolean inverse = false;
+                    if (potential.equals(node.getNode())) {
+
+                        // If this is a circular triple, discard (S p S)
+                        Resource subj = child.getSubject();
+                        if (subj.equals(potential.asResource())) {
+                            continue;
+                        }
+
+                        // Exchange the target child node, and mark as inverse
+                        potential = (RDFNode)subj;
+                        inverse = true;
+                    }
+
+                    // We are considering the node (either S or O)
+                    Resource resource = potential.asResource();
+
+                    // Do not add children that are an ancestor of this
+                    if (seen.contains(resource)) {
+                        continue;
+                    }
+
+                    // Add as a child node, and push to queue for processing
+                    RdfTree childNode = new RdfTree(model, nameResolver, node, potential, child.getPredicate(), inverse);
+                    node.addChild(childNode);
+
+                    // Never continue adding children past existing list nodes. They will appear in the tree, but
+                    // as a "pointer". Otherwise, add to queue for later.
+                    if (!listitems.contains(resource)) {
+                        queue.push(childNode);
+                    }
+                }
+                else {
+                    // Is it a literal? Can never be inverse here.
+                    RdfTree childNode = new RdfTree(model, nameResolver, node, potential, child.getPredicate(), false);
+                    node.addChild(childNode);
+                }
+            }
+
+            // We have now seen this node.
+            if (node.getNode().isResource()) {
+                seen.add(node.getNode().asResource());
+            }
+        }
+    }
+
+    private RdfTree buildRdfList(Model model, NameResolver nameResolver) throws RdfTreeException {
+        // Extract the list roots
+        List<Statement> results =
+                getSomeStatements(model, new SimpleSelector(
+                                model.getResource(rdfResultOntologyPrefix + "this"),
+                                null,
+                                (RDFNode) null),
+                        "result:this is not present as the subject of a statement, so an RDF tree cannot be generated"
+                );
+
+        Statement firstResult = results.get(0);
+
+        // List roots are the SUBJECTs of the triples in the reference data list
+        List<Resource> listRoots = generateListItemsUsingResultNext(model, firstResult.getObject().asResource());
+
+        // Remove any rdfresult triples; we have all we need.
+        StmtIterator refdata = model.listStatements(new SimpleSelector() {
+            @Override public boolean selects(Statement s) {
+                return s.getPredicate().getNameSpace().toString().equals(rdfResultOntologyPrefix);
+            }
+        });
+
+        Model modelNoRefData = model.remove(refdata.toList());
+
+        // Create the single root node
+        RdfTree list = new RdfTree(modelNoRefData, nameResolver);
+
+        // Build a tree for each list item, and add to the result list.
+        for (Resource listItem : listRoots) {
+            RdfTree root = new RdfTree(modelNoRefData, nameResolver, list, listItem, null, false);
+            buildTree(modelNoRefData, root, nameResolver, listRoots);
+            list.addChild(root);
+        }
+
+        return list;
+    }
+
     private RdfTree buildRdfList(Model model, NameResolver nameResolver, List<Resource> listItems) throws RdfTreeException {
 
+        // Create the single root node
         RdfTree list = new RdfTree(model, nameResolver);
 
+        // Add list items
         for (Resource listItem : listItems) {
             list.addListItem(listItem);
         }

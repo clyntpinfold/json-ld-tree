@@ -56,6 +56,10 @@ public class RdfTree implements Comparable<RdfTree> {
 		node = null;
 	}
 
+    public void addChild(RdfTree child) {
+        children.add(child);
+    }
+
 	public void addChild(Statement statement) {
 		RDFNode childNode = statement.getSubject();
 		boolean inverse = true;
@@ -126,16 +130,6 @@ public class RdfTree implements Comparable<RdfTree> {
 		if (parent == null) return false;
 		if (parent.isList()) return parent.hasListItemWithNode(node);
 		return parent.hasListRootWithNode(node);
-	}
-
-	/**
-	 * Returns 0 for the list, 1 for each tree root,
-	 * and +1 for each child thereafter
-	 */
-	private int getDepth() {
-		if (parent == null) return 1;
-		if (parent.isList()) return 0;
-		return parent.getDepth() + 1;
 	}
 
 	private boolean hasListItemWithNode(RDFNode node) {
