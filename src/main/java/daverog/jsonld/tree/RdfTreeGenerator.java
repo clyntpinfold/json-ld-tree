@@ -89,12 +89,12 @@ public class RdfTreeGenerator {
                 }
             }
         }
+
         if (treeType == TreeType.ITEM) {
             RdfTree root = new RdfTree(model, nameResolver, firstResult.getObject());
             return buildRdfTree(model, root, nameResolver);
         } else if (treeType == TreeType.LIST) {
             return constructListOfTrees(model, nameResolver);
-            //return buildRdfList(model, nameResolver, generateListItemsUsingResultNext(model, firstResult.getObject().asResource()));
         } else if (treeType == TreeType.LIST_WITH_ORDER_BY_PREDICATE) {
             listItems = sortListAccordingToOrderingPredicate(listItems, orderingPredicate, sortAscending, model);
             return buildRdfList(model, nameResolver, listItems);
@@ -330,10 +330,8 @@ public class RdfTreeGenerator {
             list.addListItem(listItem);
         }
 
-        while (!list.isFullyConstructed()) {
-            for (RdfTree childTree : list.getChildren()) {
-                expandRdfTree(model, childTree);
-            }
+        for (RdfTree childTree : list.getChildren()) {
+            buildTree(model, childTree, nameResolver, listItems);
         }
 
         return list;
