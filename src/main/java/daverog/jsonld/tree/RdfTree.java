@@ -24,7 +24,6 @@ public class RdfTree implements Comparable<RdfTree> {
 	private final Model model;
 	private final NameResolver nameResolver;
 	private Resource type;
-	private boolean constructed = false;
 
 	public RdfTree(Model model, NameResolver nameResolver, RdfTree parent, RDFNode node, Property predicate, boolean inverse) {
 		this.model = model;
@@ -59,48 +58,6 @@ public class RdfTree implements Comparable<RdfTree> {
     public void addChild(RdfTree child) {
         children.add(child);
     }
-
-	public void addChild(Statement statement) {
-		RDFNode childNode = statement.getSubject();
-		boolean inverse = true;
-		if (statement.getSubject().equals(node)) {
-			childNode = statement.getObject();
-			inverse = false;
-		}
-
-		//Rule 1: Do not follow inverse type predicates.
-		//This prevents commonly typed resources in a graph from creating overly large tree
-		if (inverse && statement.getPredicate().getURI().equals(RDF_TYPE)) {
-            return;
-        }
-
-		//Rule 2: If a node is present as a parent node, do not continue with more children
-		if (hasParentWithNode(childNode)) {
-            return;
-        }
-
-		//Rule 3: If a parent's node is present as a list item, do not continue with more children
-		//This allows a single generation of children when a list item is encountered
-		if (parent != null && parent.getNode() != null && !parent.isList() && hasListRootWithNode(getNode())) {
-            return;
-        }
-
-		//Rule 4: Do not follow the inverse of properties just followed if they lead to nodes that are list items
-		//This prevents 'reference data' from forming join-points in RDF lists
-        // NO TEST to cover this yet; so am ignoring until I find one.
-		if (isInverse() != inverse && parent != null && getPredicate() != null &&
-				getPredicate().equals(statement.getPredicate()) && hasListRootWithNode(childNode)) return;
-
-		//Rule 5: Do not follow inverse properties if they lead to nodes that are
-		//        closer to the root (but not necessarily a parent)
-		//This prevents 'reference data' from forming join-points in RDF lists
-		if (inverse && parent != null && getPredicate() != null) {
-            return;
-		}
-
-		RdfTree rdfTree = new RdfTree(model, nameResolver, this, childNode, statement.getPredicate(), inverse);
-		children.add(rdfTree);
-	}
 
 	public void addListItem(Resource listItem) {
 		children.add(new RdfTree(model, nameResolver, this, listItem, null, false));
@@ -232,34 +189,4 @@ public class RdfTree implements Comparable<RdfTree> {
 	}
 
     public RdfTree getParent() { return parent; }
-
-	/**
-	 * A fully constructed tree has been constructed, and all its
-	 * decendents have been constructed
-	 */
-	public boolean isFullyConstructed() {
-		if (children.isEmpty()) return constructed;
-		boolean fullyConstructed = true;
-		for (RdfTree childTree: children) {
-			if (!childTree.isFullyConstructed()) fullyConstructed = false;
-		}
-		return fullyConstructed;
-	}
-
-	/**
-	 * To be 'constructed' means that, based on the graph,
-	 * every child tree or literal value has been identified
-	 * based on the triple statements.
-	 *
-	 * It does not necessarily mean that the children
-	 * themselves have been 'constructed'.
-	 */
-	public boolean isConstructed() {
-		return constructed;
-	}
-
-	public void markAsConstructed() {
-		constructed = true;
-	}
-
 }

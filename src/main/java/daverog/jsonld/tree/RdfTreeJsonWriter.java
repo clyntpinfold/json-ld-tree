@@ -1,8 +1,5 @@
 package daverog.jsonld.tree;
 
-import java.util.*;
-
-
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -11,10 +8,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.hp.hpl.jena.rdf.model.Literal;
 import com.hp.hpl.jena.rdf.model.Resource;
-
 import daverog.jsonld.tree.NameResolver.TypedResource;
 
-import javax.annotation.Nullable;
+import java.util.*;
 
 
 public class RdfTreeJsonWriter {
@@ -144,25 +140,6 @@ public class RdfTreeJsonWriter {
 			childrenForDirectionalPredicate.add(childTree);
 		}
 		return groupedChildren;
-	}
-	
-	public SortedMap<String, SortedMap<String, String>> getNameUriMap(RdfTree tree) {
-		return Maps.transformValues(tree.getNameResolver().getMappedResources(),
-                new Function<TypedResource, SortedMap<String, String>>() {
-                    public SortedMap<String, String> apply(TypedResource resource) {
-                        SortedMap<String, String> uriData = Maps.newTreeMap();
-                        uriData.put("@id", resource.getResource().getNameSpace());
-                        switch (resource.getType()) {
-                            case VOCAB:
-                                uriData.put("@type", "@vocab");
-                                break;
-                            case ID:
-                                uriData.put("@type", "@id");
-                                break;
-                        }
-                        return uriData;
-                    }
-                });
 	}
 
     public SortedMap<String, SortedMap<String, String>> getPrefixedNameUriMap(RdfTree tree) {

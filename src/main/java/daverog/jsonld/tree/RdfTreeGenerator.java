@@ -194,6 +194,52 @@ public class RdfTreeGenerator {
         return root;
     }
 
+    private RdfTree constructListOfTrees(Model model, NameResolver nameResolver) throws RdfTreeException {
+
+        // Extract the list roots
+        List<Statement> results =
+                getSomeStatements(model, new SimpleSelector(
+                                model.getResource(rdfResultOntologyPrefix + "this"),
+                                null,
+                                (RDFNode) null),
+                        "result:this is not present as the subject of a statement, so an RDF tree cannot be generated"
+                );
+
+        Statement firstResult = results.get(0);
+
+        // List roots are the SUBJECTs of the triples in the reference data list
+        List<Resource> listRoots = generateListItemsUsingResultNext(model, firstResult.getObject().asResource());
+
+        // Create the single root node
+        RdfTree list = new RdfTree(model, nameResolver);
+
+        // Build a tree for each list item, and add to the result list.
+        for (Resource listItem : listRoots) {
+            RdfTree root = new RdfTree(model, nameResolver, list, listItem, null, false);
+            buildTree(model, root, nameResolver, listRoots);
+            list.addChild(root);
+        }
+
+        return list;
+    }
+
+    private RdfTree buildRdfList(Model model, NameResolver nameResolver, List<Resource> listItems) throws RdfTreeException {
+
+        // Create the single root node
+        RdfTree list = new RdfTree(model, nameResolver);
+
+        // Add list items
+        for (Resource listItem : listItems) {
+            list.addListItem(listItem);
+        }
+
+        for (RdfTree childTree : list.getChildren()) {
+            buildTree(model, childTree, nameResolver, listItems);
+        }
+
+        return list;
+    }
+
     public void buildTree(Model model, RdfTree root, NameResolver nameResolver, List<Resource> listitems) {
 
         // Queue of nodes to process; this makes this a breadth-first traversal.
@@ -287,108 +333,6 @@ public class RdfTreeGenerator {
                     RdfTree childNode = new RdfTree(model, nameResolver, parent, potential, child.getPredicate(), false);
                     parent.addChild(childNode);
                 }
-            }
-        }
-    }
-
-    private RdfTree constructListOfTrees(Model model, NameResolver nameResolver) throws RdfTreeException {
-
-        // Extract the list roots
-        List<Statement> results =
-                getSomeStatements(model, new SimpleSelector(
-                                model.getResource(rdfResultOntologyPrefix + "this"),
-                                null,
-                                (RDFNode) null),
-                        "result:this is not present as the subject of a statement, so an RDF tree cannot be generated"
-                );
-
-        Statement firstResult = results.get(0);
-
-        // List roots are the SUBJECTs of the triples in the reference data list
-        List<Resource> listRoots = generateListItemsUsingResultNext(model, firstResult.getObject().asResource());
-
-        // Create the single root node
-        RdfTree list = new RdfTree(model, nameResolver);
-
-        // Build a tree for each list item, and add to the result list.
-        for (Resource listItem : listRoots) {
-            RdfTree root = new RdfTree(model, nameResolver, list, listItem, null, false);
-            buildTree(model, root, nameResolver, listRoots);
-            list.addChild(root);
-        }
-
-        return list;
-    }
-
-    private RdfTree buildRdfList(Model model, NameResolver nameResolver, List<Resource> listItems) throws RdfTreeException {
-
-        // Create the single root node
-        RdfTree list = new RdfTree(model, nameResolver);
-
-        // Add list items
-        for (Resource listItem : listItems) {
-            list.addListItem(listItem);
-        }
-
-        for (RdfTree childTree : list.getChildren()) {
-            buildTree(model, childTree, nameResolver, listItems);
-        }
-
-        return list;
-    }
-
-    private RdfTree expandRdfTree(Model model, RdfTree current) {
-        if (!current.isConstructed()) {
-
-            // If this is a URI;
-            if (current.getNode().isResource()) {
-
-                // Find all statements in which this resource is the subject.
-                List<Statement> statements = model.listStatements(new SimpleSelector(
-                        current.getNode().asResource(),
-                        null,
-                        (RDFNode) null)).toList();
-
-                // Find all statements in which this resource is the object.
-                List<Statement> inverseStatements = model.listStatements(new SimpleSelector(
-                        null,
-                        null,
-                        (RDFNode) current.getNode())).toList();
-
-                inverseStatements.removeAll(statements);
-
-                // If this URI is RDF `type', then mark it as so.
-                List<Statement> types = model.listStatements(new SimpleSelector(
-                        current.getNode().asResource(),
-                        model.getProperty(RdfTree.RDF_TYPE),
-                        (RDFNode) null)).toList();
-
-                if (types.size() == 1) {
-                    current.setType(types.get(0).getObject().asResource());
-                }
-
-                // Add statements as children of `current'
-                handleStatements(current, statements);
-                handleStatements(current, inverseStatements);
-            }
-
-            current.markAsConstructed();
-
-        } else {
-            if (current.getNode().isResource()) {
-                for (RdfTree childTree : current.getChildren()) {
-                    expandRdfTree(model, childTree);
-                }
-            }
-        }
-
-        return current;
-    }
-
-    private void handleStatements(RdfTree current, List<Statement> statements) {
-        for (Statement statement : statements) {
-            if (!statement.getPredicate().getNameSpace().equals(rdfResultOntologyPrefix)) {
-                current.addChild(statement);
             }
         }
     }

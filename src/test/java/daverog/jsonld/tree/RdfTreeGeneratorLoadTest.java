@@ -1,18 +1,11 @@
 package daverog.jsonld.tree;
 
-import static org.junit.Assert.assertTrue;
-
+import com.hp.hpl.jena.rdf.model.Model;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import daverog.jsonld.tree.ModelUtils;
-import daverog.jsonld.tree.TestResourceLoader;
-
-import com.hp.hpl.jena.rdf.model.Model;
-
-import daverog.jsonld.tree.RdfTreeException;
-import daverog.jsonld.tree.RdfTreeGenerator;
+import static org.junit.Assert.assertTrue;
 
 public class RdfTreeGeneratorLoadTest {
 
@@ -50,7 +43,7 @@ public class RdfTreeGeneratorLoadTest {
     for (int i=0; i < 50; i++) {
       long innerBefore = System.currentTimeMillis();
       generator.generateRdfTree(model).asJson();
-      long innerTimeTakenInMs = System.currentTimeMillis() - innerBefore;
+//      long innerTimeTakenInMs = System.currentTimeMillis() - innerBefore;
 //      System.out.println("\tInner Time taken (ms): " + innerTimeTakenInMs);
     }
     long timeTakenInMs = System.currentTimeMillis() - before;
