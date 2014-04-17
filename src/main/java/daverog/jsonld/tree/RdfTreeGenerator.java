@@ -312,6 +312,8 @@ public class RdfTreeGenerator {
                         continue;
                     }
 
+                    // (Could not find a reason for Rule 4 in the current tests...)
+
                     // Rule 5: Do not follow inverse properties if they lead to nodes that are closer to the root.
                     //  The most mysterious rule of all...
                     if (inverse && parent.getPredicate() != null) {
