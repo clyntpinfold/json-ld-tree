@@ -344,29 +344,29 @@ public class RdfTreeGeneratorTest {
 			"<uri:a> <uri:v> \"value1\" . \n" +
 			"<uri:b> <uri:v> \"value2\" .");
 		RdfTree rdfTree = generator.generateRdfTree(model);
-		assertEquals(
-			"{\n" +
-            "  \"results\": [\n" +
-            "    {\n" +
-            "      \"@id\": \"uri:a\",\n" +
-            "      \"uri:v\": \"value1\",\n" +
-            "      \"uri:p\": \"uri:b\"\n" +
-            "    },\n" +
-            "    {\n" +
-            "      \"@id\": \"uri:b\",\n" +
-            "      \"uri:v\": \"value2\",\n" +
-            "      \"@reverse\": {\n" +
-            "        \"uri:p\": \"uri:a\"\n" +
-            "      }\n" +
-            "    }\n" +
-            "  ],\n" +
-            "  \"@context\": {\n" +
-            "    \"results\": {\n" +
-            "      \"@id\": \"@graph\"\n" +
-            "    }\n" +
-            "  }\n" +
-            "}",
-			rdfTree.asJson());
+    String expected = "{\n" +
+        "  \"results\": [\n" +
+        "    {\n" +
+        "      \"@id\": \"uri:a\",\n" +
+        "      \"uri:v\": \"value1\",\n" +
+        "      \"uri:p\": \"uri:b\"\n" +
+        "    },\n" +
+        "    {\n" +
+        "      \"@id\": \"uri:b\",\n" +
+        "      \"uri:v\": \"value2\",\n" +
+        "      \"@reverse\": {\n" +
+        "        \"uri:p\": \"uri:a\"\n" +
+        "      }\n" +
+        "    }\n" +
+        "  ],\n" +
+        "  \"@context\": {\n" +
+        "    \"results\": {\n" +
+        "      \"@id\": \"@graph\"\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+		assertEquals(expected, rdfTree.asJson());
 	}
 	
 	@Test
@@ -375,34 +375,34 @@ public class RdfTreeGeneratorTest {
 			"@prefix result: <http://purl.org/ontology/rdf-result/> ." +
 			"result:this result:next <uri:a> . \n" +
 			"<uri:a> result:next <uri:b> . \n" +
-			"<uri:a> <uri:p> <uri:ref> . \n" +
-			"<uri:b> <uri:p> <uri:bb> . \n" +
+			"<uri:a> <uri:p1> <uri:ref> . \n" +
+			"<uri:b> <uri:p2> <uri:bb> . \n" +
 			"<uri:bb> <uri:pp> <uri:ref> .");
 		RdfTree rdfTree = generator.generateRdfTree(model);
-		assertEquals(
-			"{\n" +
-            "  \"results\": [\n" +
-            "    {\n" +
-            "      \"@id\": \"uri:a\",\n" +
-            "      \"uri:p\": \"uri:ref\"\n" +
-            "    },\n" +
-            "    {\n" +
-            "      \"@id\": \"uri:b\",\n" +
-            "      \"uri:p\": [\n" +
-            "        {\n" +
-            "          \"@id\": \"uri:bb\",\n" +
-            "          \"uri:pp\": \"uri:ref\"\n" +
-            "        }\n" +
-            "      ]\n" +
-            "    }\n" +
-            "  ],\n" +
-            "  \"@context\": {\n" +
-            "    \"results\": {\n" +
-            "      \"@id\": \"@graph\"\n" +
-            "    }\n" +
-            "  }\n" +
-            "}",
-			rdfTree.asJson());
+    String expected = "{\n" +
+        "  \"results\": [\n" +
+        "    {\n" +
+        "      \"@id\": \"uri:a\",\n" +
+        "      \"uri:p1\": \"uri:ref\"\n" +
+        "    },\n" +
+        "    {\n" +
+        "      \"@id\": \"uri:b\",\n" +
+        "      \"uri:p2\": [\n" +
+        "        {\n" +
+        "          \"@id\": \"uri:bb\",\n" +
+        "          \"uri:pp\": \"uri:ref\"\n" +
+        "        }\n" +
+        "      ]\n" +
+        "    }\n" +
+        "  ],\n" +
+        "  \"@context\": {\n" +
+        "    \"results\": {\n" +
+        "      \"@id\": \"@graph\"\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+		assertEquals(expected, rdfTree.asJson());
 	}
 	
 	@Test

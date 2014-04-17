@@ -218,26 +218,27 @@ public class RdfTreeGenerator {
         while (!queue.isEmpty()) {
 
             // Parent node is head of queue
-            RdfTree node = (RdfTree)queue.pop();
+            RdfTree parent = (RdfTree)queue.pop();
+            System.out.println("!!!! node: " + parent.getNode());
 
             // Find immediate children
-            List<Statement> subjects = model.listStatements(new SimpleSelector(node.getNode().asResource(), null, (RDFNode) null)).toList();
-            List<Statement> objects = model.listStatements(new SimpleSelector(null, null, node.getNode())).toList();
+            List<Statement> subjects = model.listStatements(new SimpleSelector(parent.getNode().asResource(), null, (RDFNode) null)).toList();
+            List<Statement> objects = model.listStatements(new SimpleSelector(null, null, parent.getNode())).toList();
             List<Statement> children = Lists.newArrayList(subjects); children.addAll(objects);
-            for (Statement child : children) {
 
-                System.out.println("--> " + child + " " + child.hashCode());
+            for (Statement child : children) {
 
                 RDFNode potential = child.getObject();
                 if (potential.isResource()) {
 
                     // Is this an inverse node? i.e. one that points AT the parent.
                     boolean inverse = false;
-                    if (potential.equals(node.getNode())) {
+                    if (potential.equals(parent.getNode())) {
 
                         // If this is a circular triple, discard (S p S)
                         Resource subj = child.getSubject();
                         if (subj.equals(potential.asResource())) {
+                            System.out.println("-- not adding (circular)");
                             continue;
                         }
 
@@ -249,31 +250,64 @@ public class RdfTreeGenerator {
                     // We are considering the node (either S or O)
                     Resource resource = potential.asResource();
 
-                    // Do not add children that are an ancestor of this
-                    if (seen.contains(resource)) {
+                    System.out.println("consider --> " + child + " (" + resource + ")" + " " + child.hashCode() + " inverse=" + inverse);
+
+                    // Mark parent as "type" node if this child is a type
+                    boolean isType = child.getPredicate() == model.getProperty(RdfTree.RDF_TYPE);
+                    parent.setType(resource);
+
+                    // Do not follow inverse type relationships
+                    if (inverse && isType) {
                         continue;
                     }
 
+                    // Do not add children that are an ancestor of this
+                    if (seen.contains(resource)) {
+                        System.out.println("-- not adding (ancestor)");
+                        continue;
+                    }
+
+                    // Do not add reverse references to ancestors
+                    if (inverse && !seen.contains(resource)) {
+
+                        // This is a weird one; we allow these through if the parent is a list item.
+                        // This matches rule 4, but I think it might be an error.
+                        if (!listitems.contains(parent.getNode().asResource())) {
+
+                            System.out.println("-- not adding (inverse)");
+                            continue;
+
+                        }
+                    }
+
+                    System.out.println("add: " + resource + " -- " + child.getPredicate() + " -> " + parent.getNode() + "], inverse=" + inverse + " type=" + isType);
+
                     // Add as a child node, and push to queue for processing
-                    RdfTree childNode = new RdfTree(model, nameResolver, node, potential, child.getPredicate(), inverse);
-                    node.addChild(childNode);
+                    RdfTree childNode = new RdfTree(model, nameResolver, parent, potential, child.getPredicate(), inverse);
+                    parent.addChild(childNode);
 
                     // Never continue adding children past existing list nodes. They will appear in the tree, but
                     // as a "pointer". Otherwise, add to queue for later.
                     if (!listitems.contains(resource)) {
+                        System.out.print("q+: "+resource);
                         queue.push(childNode);
+                        for (Object qt : queue) {
+                            System.out.print(" | " + ((RdfTree)qt).getNode());
+                        }
+                        System.out.println();
                     }
                 }
                 else {
                     // Is it a literal? Can never be inverse here.
-                    RdfTree childNode = new RdfTree(model, nameResolver, node, potential, child.getPredicate(), false);
-                    node.addChild(childNode);
+                    RdfTree childNode = new RdfTree(model, nameResolver, parent, potential, child.getPredicate(), false);
+                    System.out.println("!! adding literal " + childNode);
+                    parent.addChild(childNode);
                 }
             }
 
             // We have now seen this node.
-            if (node.getNode().isResource()) {
-                seen.add(node.getNode().asResource());
+            if (parent.getNode().isResource()) {
+                seen.add(parent.getNode().asResource());
             }
         }
     }
