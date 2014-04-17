@@ -258,6 +258,10 @@ public class RdfTreeGenerator {
             // Find immediate children
             List<Statement> subjects = model.listStatements(new SimpleSelector(parent.getNode().asResource(), null, (RDFNode) null)).toList();
             List<Statement> objects = model.listStatements(new SimpleSelector(null, null, parent.getNode())).toList();
+
+            // Remove any _duplicate_ triples of the form "a -p-> a" (where subject matches object).
+            // This is so that 'loop' triples do not get rendered twice; they will still be present,
+            // but only once in the child list.
             objects.removeAll(subjects);
 
             List<Statement> children = Lists.newArrayList(subjects);
@@ -277,7 +281,10 @@ public class RdfTreeGenerator {
                     boolean inverse = false;
                     if (potential.equals(parent.getNode())) {
 
-                        // If this is a circular triple, don't mark it as inverse
+                        // If this is a circular triple, don't mark it as inverse.
+                        // In the original, the sense of this test was reversed - i.e. `inverse' started
+                        // out as `true' and became `false' here, thus dealing with 'loop' triples.
+                        // It _think_ this is easier to follow?
                         RDFNode subj = child.getSubject();
                         if (!subj.equals(potential)) {
 
@@ -318,11 +325,13 @@ public class RdfTreeGenerator {
                     // (Could not find a reason for Rule 4 in the current tests...)
 
                     // Rule 5: Do not follow inverse properties if they lead to nodes that are closer to the root.
-                    // The most mysterious rule of all... The comment is confusing.
-                    // This seems to be saying: if this is an inverse statement, ONLY follow it if
+                    // The most mysterious rule of all... The comment above is confusing, and the code which remained
+                    // after the removal of the bit that decided if a node was 'higher' in the tree has been used
+                    // as a starting point.
+                    // The original code seemed to be saying: if this is an inverse statement, ONLY follow it if
                     // the candidate child is first generation from the list root; i.e. only add list items
                     // as inverse (@reverse) links. So... re-worded:
-                    // Discard inverse links unless they point to a list item.
+                    // Rule 5: Discard inverse links unless they point to a list item.
                     if (inverse && !parentIsListItem) {
                         continue;
                     }
