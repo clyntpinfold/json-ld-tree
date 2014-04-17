@@ -86,33 +86,48 @@ public class RdfTreeGeneratorTest {
 	}
 	
 	@Test
-	public void literalWithDatatypeStringIsIgnored() throws RdfTreeException {
-		Model model = ModelUtils.createJenaModel(
-				"@prefix result: <http://purl.org/ontology/rdf-result/> .\n" +
-				"@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n" +
-				"result:this result:item <uri:a> . \n" +
-				"<uri:a> <uri:b> \"string\"^^xsd:string .\n" + 
-				"<uri:a> <uri:b> \"string2\"^^xsd:string .\n" + 
-				"<uri:a> <uri:c> \"string\"^^xsd:string .");
-		assertEquals(
-				"<Thing id=\"uri:a\">\n" +
-				"  <uri:b>string</uri:b>\n" +
-				"  <uri:b>string2</uri:b>\n" +
-				"  <uri:c>string</uri:c>\n" +
-				"</Thing>", 
-			generator.generateRdfTree(model).asXml());
-		assertEquals(
-				"{\n" +
-				"  \"@id\": \"uri:a\",\n" +
-				"  \"uri:b\": [\n" +
-				"    \"string\",\n" +
-				"    \"string2\"\n" +
-				"  ],\n" + 
-				"  \"uri:c\": \"string\"\n" +
-				"}", 
-			generator.generateRdfTree(model).asJson());
-	}
-	
+	public void literalWithDatatypeStringIsIgnoredInXml() throws RdfTreeException {
+        Model model = ModelUtils.createJenaModel(
+                "@prefix result: <http://purl.org/ontology/rdf-result/> .\n" +
+                        "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n" +
+                        "result:this result:item <uri:a> . \n" +
+                        "<uri:a> <uri:b> \"string\"^^xsd:string .\n" +
+                        "<uri:a> <uri:b> \"string2\"^^xsd:string .\n" +
+                        "<uri:a> <uri:c> \"string\"^^xsd:string ."
+        );
+        assertEquals(
+                "<Thing id=\"uri:a\">\n" +
+                        "  <uri:b>string</uri:b>\n" +
+                        "  <uri:b>string2</uri:b>\n" +
+                        "  <uri:c>string</uri:c>\n" +
+                        "</Thing>",
+                generator.generateRdfTree(model).asXml()
+        );
+    }
+
+    @Test
+    public void literalWithDatatypeStringIsIgnoredInJson() throws RdfTreeException {
+        Model model = ModelUtils.createJenaModel(
+                "@prefix result: <http://purl.org/ontology/rdf-result/> .\n" +
+                        "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n" +
+                        "result:this result:item <uri:a> . \n" +
+                        "<uri:a> <uri:b> \"string\"^^xsd:string .\n" +
+                        "<uri:a> <uri:b> \"string2\"^^xsd:string .\n" +
+                        "<uri:a> <uri:c> \"string\"^^xsd:string ."
+        );
+        assertEquals(
+                "{\n" +
+                        "  \"@id\": \"uri:a\",\n" +
+                        "  \"uri:b\": [\n" +
+                        "    \"string\",\n" +
+                        "    \"string2\"\n" +
+                        "  ],\n" +
+                        "  \"uri:c\": \"string\"\n" +
+                        "}",
+                generator.generateRdfTree(model).asJson()
+        );
+    }
+
 	@Test
 	public void loopTripleIsRenderedInTree() throws RdfTreeException {
 		Model model = ModelUtils.createJenaModel(

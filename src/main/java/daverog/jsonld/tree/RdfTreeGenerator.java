@@ -8,7 +8,7 @@ import java.util.*;
 
 public class RdfTreeGenerator {
 
-    private final String rdfResultOntologyPrefix;
+    private final String rdfResultOntologyPrefix = RdfTree.DEFAULT_RESULT_ONTOLOGY_URI_PREFIX;
 
     enum TreeType {
         UNKNOWN,
@@ -17,24 +17,12 @@ public class RdfTreeGenerator {
         LIST_WITH_ORDER_BY_PREDICATE
     }
 
-    public RdfTreeGenerator() {
-        rdfResultOntologyPrefix = RdfTree.DEFAULT_RESULT_ONTOLOGY_URI_PREFIX;
-    }
-
-    public RdfTreeGenerator(String rdfResultOntologyPrefix) {
-        this.rdfResultOntologyPrefix = rdfResultOntologyPrefix;
-    }
-
     public RdfTree generateRdfTree(Model model) throws RdfTreeException {
         return generateRdfTree(model, Lists.<String>newArrayList(), Maps.<String, String>newHashMap());
     }
 
     public RdfTree generateRdfTree(Model model, Map<String, String> nameOverrides) throws RdfTreeException {
         return generateRdfTree(model, Lists.<String>newArrayList(), nameOverrides);
-    }
-
-    public RdfTree generateRdfTree(Model model, List<String> prioritisedNamespaces) throws RdfTreeException {
-        return generateRdfTree(model, prioritisedNamespaces, Maps.<String, String>newHashMap());
     }
 
     public RdfTree generateRdfTree(Model model, List<String> prioritisedNamespaces, Map<String, String> nameOverrides) throws RdfTreeException {
@@ -49,6 +37,7 @@ public class RdfTreeGenerator {
                 null,
                 (RDFNode) null),
                 "result:this is not present as the subject of a statement, so an RDF tree cannot be generated");
+
         Statement firstResult = results.get(0);
         Resource orderingPredicate = null;
         boolean sortAscending = true;
@@ -101,7 +90,8 @@ public class RdfTreeGenerator {
             }
         }
         if (treeType == TreeType.ITEM) {
-            return buildRdfTree(model, new RdfTree(model, nameResolver, firstResult.getObject()));
+            RdfTree root = new RdfTree(model, nameResolver, firstResult.getObject());
+            return buildRdfTree(model, root, nameResolver);
         } else if (treeType == TreeType.LIST) {
             return constructListOfTrees(model, nameResolver);
             //return buildRdfList(model, nameResolver, generateListItemsUsingResultNext(model, firstResult.getObject().asResource()));
@@ -198,11 +188,9 @@ public class RdfTreeGenerator {
         return Lists.newArrayList(firstItem);
     }
 
-    private RdfTree buildRdfTree(Model model, RdfTree root) {
-        while (!root.isFullyConstructed()) {
-            expandRdfTree(model, root);
-        }
-
+    private RdfTree buildRdfTree(Model model, RdfTree root, NameResolver nameResolver) {
+        List<Resource> onlyRoot = Lists.newArrayList(root.getNode().asResource());
+        buildTree(model, root, nameResolver, onlyRoot);
         return root;
     }
 
@@ -221,9 +209,17 @@ public class RdfTreeGenerator {
             // Find immediate children
             List<Statement> subjects = model.listStatements(new SimpleSelector(parent.getNode().asResource(), null, (RDFNode) null)).toList();
             List<Statement> objects = model.listStatements(new SimpleSelector(null, null, parent.getNode())).toList();
-            List<Statement> children = Lists.newArrayList(subjects); children.addAll(objects);
+            objects.removeAll(subjects);
+
+            List<Statement> children = Lists.newArrayList(subjects);
+            children.addAll(objects);
 
             for (Statement child : children) {
+
+                // We can ignore all rdfresult triples; these have been used.
+                if(child.getPredicate().getNameSpace().equals(rdfResultOntologyPrefix)) {
+                    continue;
+                }
 
                 RDFNode potential = child.getObject();
                 if (potential.isResource()) {
@@ -232,23 +228,24 @@ public class RdfTreeGenerator {
                     boolean inverse = false;
                     if (potential.equals(parent.getNode())) {
 
-                        // If this is a circular triple, discard (S p S)
-                        Resource subj = child.getSubject();
-                        if (subj.equals(potential.asResource())) {
-                            continue;
-                        }
+                        // If this is a circular triple, don't mark it as inverse
+                        RDFNode subj = child.getSubject();
+                        if (!subj.equals(potential)) {
 
-                        // Exchange the target child node, and mark as inverse
-                        potential = (RDFNode)subj;
-                        inverse = true;
+                            // Exchange the target child node, and mark as inverse
+                            potential = (RDFNode) child.getSubject();
+                            inverse = true;
+                        }
                     }
 
                     // We are considering the node (either S or O)
                     Resource resource = potential.asResource();
 
                     // Mark parent as "type" node if this child is a type
-                    boolean isType = child.getPredicate() == model.getProperty(RdfTree.RDF_TYPE);
-                    parent.setType(resource);
+                    boolean isType = child.getPredicate().equals(model.getProperty(RdfTree.RDF_TYPE));
+                    if (isType) {
+                        parent.setType(resource);
+                    }
 
                     // Rule 1: Do not follow inverse type relationships
                     if (inverse && isType) {
@@ -295,6 +292,7 @@ public class RdfTreeGenerator {
     }
 
     private RdfTree constructListOfTrees(Model model, NameResolver nameResolver) throws RdfTreeException {
+
         // Extract the list roots
         List<Statement> results =
                 getSomeStatements(model, new SimpleSelector(
@@ -309,22 +307,13 @@ public class RdfTreeGenerator {
         // List roots are the SUBJECTs of the triples in the reference data list
         List<Resource> listRoots = generateListItemsUsingResultNext(model, firstResult.getObject().asResource());
 
-        // Remove any rdfresult triples; we have all we need.
-        StmtIterator refdata = model.listStatements(new SimpleSelector() {
-            @Override public boolean selects(Statement s) {
-                return s.getPredicate().getNameSpace().equals(rdfResultOntologyPrefix);
-            }
-        });
-
-        Model modelNoRefData = model.remove(refdata.toList());
-
         // Create the single root node
-        RdfTree list = new RdfTree(modelNoRefData, nameResolver);
+        RdfTree list = new RdfTree(model, nameResolver);
 
         // Build a tree for each list item, and add to the result list.
         for (Resource listItem : listRoots) {
-            RdfTree root = new RdfTree(modelNoRefData, nameResolver, list, listItem, null, false);
-            buildTree(modelNoRefData, root, nameResolver, listRoots);
+            RdfTree root = new RdfTree(model, nameResolver, list, listItem, null, false);
+            buildTree(model, root, nameResolver, listRoots);
             list.addChild(root);
         }
 
