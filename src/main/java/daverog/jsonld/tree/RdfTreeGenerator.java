@@ -33,10 +33,11 @@ public class RdfTreeGenerator {
             return new RdfTree(model, nameResolver, null);
 
         List<Statement> results = getSomeStatements(model, new SimpleSelector(
-                model.getResource(rdfResultOntologyPrefix + "this"),
-                null,
-                (RDFNode) null),
-                "result:this is not present as the subject of a statement, so an RDF tree cannot be generated");
+                        model.getResource(rdfResultOntologyPrefix + "this"),
+                        null,
+                        (RDFNode) null),
+                "result:this is not present as the subject of a statement, so an RDF tree cannot be generated"
+        );
 
         Statement firstResult = results.get(0);
         Resource orderingPredicate = null;
@@ -67,6 +68,7 @@ public class RdfTreeGenerator {
                 listItems.add(result.getObject().asResource());
             }
         }
+
         for (Statement result : results) {
             if (result.getPredicate().getURI().equals(rdfResultOntologyPrefix + "orderByPredicate")) {
                 if (orderingPredicate != null)
@@ -162,7 +164,8 @@ public class RdfTreeGenerator {
                 new SimpleSelector(
                         subject,
                         property,
-                        (RDFNode) null)).toList();
+                        (RDFNode) null)
+        ).toList();
 
         return Lists.transform(statements, new Function<Statement, RDFNode>() {
             public RDFNode apply(Statement statement) {
@@ -250,7 +253,7 @@ public class RdfTreeGenerator {
         while (!queue.isEmpty()) {
 
             // Parent node is head of queue
-            RdfTree parent = (RdfTree)queue.pop();
+            RdfTree parent = (RdfTree) queue.pop();
 
             // Find immediate children
             List<Statement> subjects = model.listStatements(new SimpleSelector(parent.getNode().asResource(), null, (RDFNode) null)).toList();
@@ -263,7 +266,7 @@ public class RdfTreeGenerator {
             for (Statement child : children) {
 
                 // We can ignore all rdfresult triples; these have been used.
-                if(child.getPredicate().getNameSpace().equals(rdfResultOntologyPrefix)) {
+                if (child.getPredicate().getNameSpace().equals(rdfResultOntologyPrefix)) {
                     continue;
                 }
 
@@ -315,8 +318,12 @@ public class RdfTreeGenerator {
                     // (Could not find a reason for Rule 4 in the current tests...)
 
                     // Rule 5: Do not follow inverse properties if they lead to nodes that are closer to the root.
-                    //  The most mysterious rule of all...
-                    if (inverse && parent.getPredicate() != null) {
+                    // The most mysterious rule of all... The comment is confusing.
+                    // This seems to be saying: if this is an inverse statement, ONLY follow it if
+                    // the candidate child is first generation from the list root; i.e. only add list items
+                    // as inverse (@reverse) links. So... re-worded:
+                    // Discard inverse links unless they point to a list item.
+                    if (inverse && !parentIsListItem) {
                         continue;
                     }
 
@@ -329,8 +336,7 @@ public class RdfTreeGenerator {
                     if (!listitems.contains(resource)) {
                         queue.push(childNode);
                     }
-                }
-                else {
+                } else {
                     // Is it a literal? Can never be inverse here, so just add it.
                     RdfTree childNode = new RdfTree(model, nameResolver, parent, potential, child.getPredicate(), false);
                     parent.addChild(childNode);
