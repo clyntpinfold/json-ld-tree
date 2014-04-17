@@ -103,7 +103,8 @@ public class RdfTreeGenerator {
         if (treeType == TreeType.ITEM) {
             return buildRdfTree(model, new RdfTree(model, nameResolver, firstResult.getObject()));
         } else if (treeType == TreeType.LIST) {
-            return buildRdfList(model, nameResolver);
+            return constructListOfTrees(model, nameResolver);
+            //return buildRdfList(model, nameResolver, generateListItemsUsingResultNext(model, firstResult.getObject().asResource()));
         } else if (treeType == TreeType.LIST_WITH_ORDER_BY_PREDICATE) {
             listItems = sortListAccordingToOrderingPredicate(listItems, orderingPredicate, sortAscending, model);
             return buildRdfList(model, nameResolver, listItems);
@@ -297,7 +298,7 @@ public class RdfTreeGenerator {
         }
     }
 
-    private RdfTree buildRdfList(Model model, NameResolver nameResolver) throws RdfTreeException {
+    private RdfTree constructListOfTrees(Model model, NameResolver nameResolver) throws RdfTreeException {
         // Extract the list roots
         List<Statement> results =
                 getSomeStatements(model, new SimpleSelector(

@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableMap;
 import com.hp.hpl.jena.rdf.model.Model;
 import org.apache.commons.io.IOUtils;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -556,9 +555,8 @@ public class RdfTreeGeneratorTest {
 			TestResourceLoader.loadClasspathResourceAsString("fixtures/ben-ainslie.ttl"));
 		RdfTree rdfTree = generator.generateRdfTree(model);
 		assertEquals(
-			TestResourceLoader.loadClasspathResourceAsString("fixtures/ben-ainslie.xml"), 
-		rdfTree.asXml());
-		System.out.println(rdfTree.asJson());
+                TestResourceLoader.loadClasspathResourceAsString("fixtures/ben-ainslie.xml"),
+                rdfTree.asXml());
 	}
 	
 	@Test
@@ -721,7 +719,6 @@ public class RdfTreeGeneratorTest {
                         "<uri:c> <uri:p> \"zzz\" . \n" +
                         "<uri:d> <uri:s> \"aaa\" .");
         RdfTree rdfTree = generator.generateRdfTree(model);
-        System.out.println(rdfTree.asJson());
         assertEquals(
                 "{\n" +
                         "  \"results\": [\n" +
@@ -766,7 +763,6 @@ public class RdfTreeGeneratorTest {
                         "<uri:c> <uri:p> \"zzz\" . \n" +
                         "<uri:d> <uri:s> \"aaa\" .");
         RdfTree rdfTree = generator.generateRdfTree(model);
-        System.out.println(rdfTree.asJson());
         assertEquals(
                 "{\n" +
                         "  \"results\": [\n" +
@@ -904,10 +900,11 @@ public class RdfTreeGeneratorTest {
             "}", rdfTree.asJson());
     }
 
-    @Ignore
+    @Test
     public void testAllGraphInputs() throws RdfTreeException, IOException {
         List<String> files = IOUtils.readLines(ClassLoader.getSystemResourceAsStream("fixtures/input"), "UTF-8");
         for (String fn : files) {
+            System.out.println(fn);
             int dot = fn.lastIndexOf('.');
             assert(dot > 0);
             String basename = fn.substring(0, dot);
@@ -917,5 +914,18 @@ public class RdfTreeGeneratorTest {
             String expected = TestResourceLoader.loadClasspathResourceAsString("fixtures/output/" + basename + ".json");
             assertEquals(expected.trim(), json);
         }
+    }
+
+    @Test
+    public void testInterlinkedGraph() throws RdfTreeException, IOException {
+        String input = TestResourceLoader.loadClasspathResourceAsString("fixtures/interlink-minimal.ttl");
+        String output = TestResourceLoader.loadClasspathResourceAsString("fixtures/interlink-minimal.json");
+        assertGeneratedMatches(input, output);
+    }
+
+    private void assertGeneratedMatches(String input, String output) throws RdfTreeException {
+        Model model = ModelUtils.createJenaModel(input);
+        RdfTree rdfTree = generator.generateRdfTree(model);
+        assertEquals(output.trim(), rdfTree.asJson().trim());
     }
 }
