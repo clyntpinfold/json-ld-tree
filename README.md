@@ -2,6 +2,12 @@
 
 This library will allow the generation of stable, predictable JSON-LD based on RDF using the RDF Result ontology.
 
+## This branch
+
+In an effort to better understand the way that trees are built, this branch is an experimental re-implementation of the core tree-building bit intended to provide an alternative way of looking at the algorithm. It passes all current tests and a couple more have been added, but there were some constructs that seemed unnecessary, so that code has been omitted from the re-implemented sections.
+
+This, therefore, comes with a disclaimer: Use at your own risk! There may be some critical bits missing.
+
 # Getting started
 
 To generate the JSON String, do the following:
