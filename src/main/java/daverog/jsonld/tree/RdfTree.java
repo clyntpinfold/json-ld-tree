@@ -70,17 +70,24 @@ public class RdfTree implements Comparable<RdfTree> {
 
 		//Rule 1: Do not follow inverse type predicates.
 		//This prevents commonly typed resources in a graph from creating overly large tree
-		if (inverse && statement.getPredicate().getURI().equals(RDF_TYPE)) return;
+		if (inverse && statement.getPredicate().getURI().equals(RDF_TYPE)) {
+            return;
+        }
 
 		//Rule 2: If a node is present as a parent node, do not continue with more children
-		if (hasParentWithNode(childNode)) return;
+		if (hasParentWithNode(childNode)) {
+            return;
+        }
 
-		//Rule 3: If a parent's node is present as a list item of the root node, do not continue with more children
+		//Rule 3: If a parent's node is present as a list item, do not continue with more children
 		//This allows a single generation of children when a list item is encountered
-		if (parent != null && parent.getNode() != null && !parent.isList() && hasListRootWithNode(getNode())) return;
+		if (parent != null && parent.getNode() != null && !parent.isList() && hasListRootWithNode(getNode())) {
+            return;
+        }
 
 		//Rule 4: Do not follow the inverse of properties just followed if they lead to nodes that are list items
 		//This prevents 'reference data' from forming join-points in RDF lists
+        // NO TEST to cover this yet; so am ignoring until I find one.
 		if (isInverse() != inverse && parent != null && getPredicate() != null &&
 				getPredicate().equals(statement.getPredicate()) && hasListRootWithNode(childNode)) return;
 
@@ -88,7 +95,7 @@ public class RdfTree implements Comparable<RdfTree> {
 		//        closer to the root (but not necessarily a parent)
 		//This prevents 'reference data' from forming join-points in RDF lists
 		if (inverse && parent != null && getPredicate() != null) {
-			return;
+            return;
 		}
 
 		RdfTree rdfTree = new RdfTree(model, nameResolver, this, childNode, statement.getPredicate(), inverse);
@@ -223,6 +230,8 @@ public class RdfTree implements Comparable<RdfTree> {
 	public boolean isEmpty() {
 		return children.isEmpty() && node == null;
 	}
+
+    public RdfTree getParent() { return parent; }
 
 	/**
 	 * A fully constructed tree has been constructed, and all its

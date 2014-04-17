@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import com.hp.hpl.jena.rdf.model.Model;
 import org.apache.commons.io.IOUtils;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -900,7 +901,7 @@ public class RdfTreeGeneratorTest {
             "}", rdfTree.asJson());
     }
 
-    @Test
+    @Ignore
     public void testAllGraphInputs() throws RdfTreeException, IOException {
         List<String> files = IOUtils.readLines(ClassLoader.getSystemResourceAsStream("fixtures/input"), "UTF-8");
         for (String fn : files) {

@@ -208,9 +208,6 @@ public class RdfTreeGenerator {
 
     public void buildTree(Model model, RdfTree root, NameResolver nameResolver, List<Resource> listitems) {
 
-        // Keep track of the nodes we have seen
-        ArrayList<Resource> seen = new ArrayList<Resource>();
-
         // Queue of nodes to process; this makes this a breadth-first traversal.
         ArrayDeque queue = new ArrayDeque<RdfTree>();
         queue.push(root);
@@ -253,25 +250,29 @@ public class RdfTreeGenerator {
                     boolean isType = child.getPredicate() == model.getProperty(RdfTree.RDF_TYPE);
                     parent.setType(resource);
 
-                    // Do not follow inverse type relationships
+                    // Rule 1: Do not follow inverse type relationships
                     if (inverse && isType) {
                         continue;
                     }
 
-                    // Do not add children that are an ancestor of this
-                    if (seen.contains(resource)) {
+                    // Rule 2: Do not add children that are an ancestor of this
+                    if (parent.hasParentWithNode(potential)) {
                         continue;
                     }
 
-                    // Do not add reverse references to ancestors
-                    if (inverse && !seen.contains(resource)) {
+                    boolean parentIsListItem = listitems.contains(parent.getNode().asResource());
+                    boolean hasGrandParent = parent.getParent() != null && parent.getParent().getNode() != null;
 
-                        // This is a weird one; we allow these through if the parent is a list item.
-                        // This matches rule 4, but I think it might be an error.
-                        // If that is the case, remove the following conditional but keep the 'continue'.
-                        if (!listitems.contains(parent.getNode().asResource())) {
-                            continue;
-                        }
+                    // Rule 3: If a parent's node is present as a list item, do not continue with more children.
+                    //   This allows a single generation of children when a list item is encountered
+                    if (parentIsListItem && hasGrandParent) {
+                        continue;
+                    }
+
+                    // Rule 5: Do not follow inverse properties if they lead to nodes that are closer to the root.
+                    //  The most mysterious rule of all...
+                    if (inverse && parent.getPredicate() != null) {
+                        continue;
                     }
 
                     // Add as a child node, and push to queue for processing
@@ -289,11 +290,6 @@ public class RdfTreeGenerator {
                     RdfTree childNode = new RdfTree(model, nameResolver, parent, potential, child.getPredicate(), false);
                     parent.addChild(childNode);
                 }
-            }
-
-            // We have now seen this node.
-            if (parent.getNode().isResource()) {
-                seen.add(parent.getNode().asResource());
             }
         }
     }
@@ -316,7 +312,7 @@ public class RdfTreeGenerator {
         // Remove any rdfresult triples; we have all we need.
         StmtIterator refdata = model.listStatements(new SimpleSelector() {
             @Override public boolean selects(Statement s) {
-                return s.getPredicate().getNameSpace().toString().equals(rdfResultOntologyPrefix);
+                return s.getPredicate().getNameSpace().equals(rdfResultOntologyPrefix);
             }
         });
 
